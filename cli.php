@@ -12,12 +12,12 @@ namespace Cli;
 
 class Cli
 {
-    private $echo;
+    private $echo;cat
     private $config;
     private $command_parameters;
 
 
-    private function testCommand($name, $color = 'RED')
+    private function testCommand(string $name, bool $is_required, int $number, float $price = 4.18, string $color = 'RED')
     {
         $this->echo->msg(['Hello, ', $name, 'you chose color', $color]);
         $this->echo->error('ERRORS in program are RED');
@@ -25,6 +25,16 @@ class Cli
         $this->echo->success('Green messages means success operations');
         $this->echo->info('Cyan message require input some information.');
     }
+
+    private function test2Command($name)
+    {
+        $this->echo->msg(['Hello, ', $name, 'you chose color', $name]);
+        $this->echo->error('ERRORS in program are RED');
+        $this->echo->warn('Yellow message show some worning');
+        $this->echo->success('Green messages means success operations');
+        $this->echo->info('Cyan message require input some information.');
+    }
+
 
     /**
      * SYSTEM FUNCTIONS
@@ -76,8 +86,8 @@ class Cli
 
     const MESSAGE_ARR_HELLO = [
         '',
-        'Hello! This is delploy script for manage application based on tsv (serveon.ru) application schema.',
-        'USAGE: $deploy command [params1] [param2] [paramX]',
+        'Hello! This is cli php script for do some operations',
+        'USAGE: $cli.php command [--param1] [--param2] [paramX] [-p]',
         'Please use follow commands:',
         ''
     ];
@@ -89,8 +99,10 @@ class Cli
         $this->config = new Config();
         $this->echo = new MyEcho();
 
-        if($this->is_valid_call()) {
-            $this->execute();
+        $command_name = $this->getCommandMethod();
+
+        if ($this->is_valid_call($command_name)) {
+            $this->execute($command_name);
         } else {
             $this->helpCommand();
         }
@@ -103,44 +115,140 @@ class Cli
         $this->echo->msg($help_message);
     }
 
-    private function is_valid_call()
+    private function is_valid_call($command_name)
     {
-        $method = $this->getCommandMethod();
-
-        if(!method_exists($this, $method)) {
+        if (!method_exists($this, $command_name)) {
             return false;
         }
 
-        $class = new \ReflectionClass(__CLASS__);
-        $methods = [];
-        foreach($class->getMethods() as $method){
-            if($this->is_command($method->name)){
+        $params = $this->getCommandParams($command_name);
 
-                $obj = [];
-                $obj['action'] = $method->name;
-                $obj['params'] = array_map(
-                    function($value){
-                        return $value->name.
-                        ($value->isDefaultValueAvailable() ? '='.$value->getDefaultValue() : '');
-                    },
-                    $method->getParameters()
-                );
-                $methods[] = $obj;
+        $options = $this->getOptions();
+
+        foreach ($params['params'] as $parameter) {
+
+            if($parameter['required']) {
+                if(!isset($options[$parameter['name']])) {
+
+                    $is_type = $parameter['type'] !== null ? ' (' . $parameter['type'] .')' : '';
+
+                    $this->echo->error('Function `' . $command_name . '` require parameter `' . $parameter['name'] . $is_type . '`, but not set');
+                    $this->echo->info('Please add');
+                    $this->echo->msg('--' . $parameter['name'] . ' "some value if need"');
+                    $this->echo->info('to your command for call this function');
+                    die();
+                }
             }
-        }
 
-        var_dump($methods);
+        }
 
         return true;
     }
 
-    private function execute()
+    private function getOptions()
     {
-        $method = $this->getCommandMethod();
+        global $argv;
 
-        if(method_exists($this, $method)) {
-            $this->$method();
+        $parameter = '';
+
+        $parameters = [];
+
+        for ($index = 2; $index < count($argv); $index++) {
+
+            if(!$parameter) {
+
+                if($argv[$index][0] != '-') {
+
+                    $this->echo->error('You set unsupported parameter ' . $argv[$index]);
+                    $this->helpCommand();
+                    die();
+
+                } else {
+                    $parameter = str_replace('-','', $argv[$index]);
+                }
+
+            } else {
+
+                if($argv[$index][0] == '-') {
+
+                    $parameters[$parameter] = false;
+                    $parameter = str_replace('-','', $argv[$index]);
+
+                } else {
+
+                    $parameters[$parameter] = $argv[$index];
+                    $parameter = '';
+
+                }
+            }
         }
+
+        return $parameters;
+    }
+
+    private function getCommandParams($command_name = '')
+    {
+        $class = new \ReflectionClass(__CLASS__);
+
+        $methods = [];
+
+        foreach ($class->getMethods() as $method) {
+
+            if ($this->is_command($method->name)) {
+
+                $obj = [];
+                $obj['action'] = $method->name;
+                $obj['params'] = array_map(
+
+                    function ($value)
+                    {
+
+                        return [
+                            'name' => $value->name,
+                            'required' => !$value->isDefaultValueAvailable(),
+                            'default' => $value->isDefaultValueAvailable() ? $value->getDefaultValue() : null,
+                            'type' => $value->hasType() ? $value->getType()->__toString() : null
+                        ];
+                    },
+                    $method->getParameters()
+                );
+
+                if ($command_name && $command_name == $method->name) {
+                    return $obj;
+                } else {
+                    $methods[] = $obj;
+                }
+            }
+        }
+
+        return $methods;
+    }
+
+    private function execute($command_name)
+    {
+        if (method_exists($this, $command_name)) {
+//            $this->$command_name();
+            call_user_func_array([$this, $command_name], $this->getCommandValues($command_name));
+        }
+    }
+
+    private function getCommandValues($command_name)
+    {
+        $values = [];
+
+        $options = $this->getOptions();
+        $params = $this->getCommandParams($command_name);
+
+        foreach ($params['params'] as $parameter) {
+
+            if ($parameter['required']) {
+                if (isset($options[$parameter['name']])) {
+                    $values[] = $options[$parameter['name']];
+                }
+            }
+        }
+
+        return $values;
     }
 
     private function is_command($command)
@@ -157,19 +265,48 @@ class Cli
 
             $command_match = $this->is_command($method);
 
-            if($command_match) {
-                $methods_list[] =  $command_match[1] . self::SEPARATOR . $this->getCmdDesc($command_match[1]);
+            if ($command_match) {
+
+                $command_name = $command_match[1];
+
+                $methods_list[] = implode('',
+                    [
+                        $command_match[1],
+                        self::SEPARATOR,
+                        $this->getCommandDescription($command_name),
+                        $this->getCommandParamsHelp($command_name)
+                    ]
+                );
             }
         }
 
         return $methods_list;
     }
 
-    private function getCmdDesc($command)
+    private function getCommandParamsHelp($command_name)
+    {
+        $text = '';
+
+        $params = $this->getCommandParams($command_name);
+
+//        var_dump($command_name);
+//        var_dump($params);
+
+        if(isset($params['params']) && is_array($params['params'])) {
+
+            foreach ($params['params'] as $param) {
+                $text .= '--' . $param['name'] . '(' .$param['type']. ') ';
+            }
+        }
+
+        return $text;
+    }
+
+    private function getCommandDescription($command)
     {
         $descriptions = self::CMD_DESCTIPTION;
 
-        if(isset($descriptions[$command])) {
+        if (isset($descriptions[$command])) {
             return $descriptions[$command];
         } else {
             return self::MESSAGE_NO_DESC;
@@ -178,6 +315,13 @@ class Cli
 
     private function getCommandMethod()
     {
+
+        global $argv;
+
+        if (isset($argv) && isset($argv[1]) && $argv[1]) {
+            return $argv[1] . 'Command';
+        }
+
         return 'helpCommand';
     }
 }
@@ -246,7 +390,7 @@ class MyEcho
     {
         foreach ($messages as $message) {
 
-            if(is_array($message)) {
+            if (is_array($message)) {
                 $this->msg_array($message, $color);
             } else {
                 $this->message($message, $color);
@@ -261,7 +405,7 @@ class MyEcho
 
     private function message($message, $color = self::COLOR_WHITE)
     {
-        if(is_array($message)) {
+        if (is_array($message)) {
             $this->msg_array($message, $color);
             return true;
         }
