@@ -12,21 +12,29 @@ namespace Cli;
 
 class Cli
 {
-    private $echo;cat
+    private $echo;
     private $config;
-    private $command_parameters;
 
+    const CMD_DESCTIPTION = [
+        'help' => 'current help message',
+        'man' => 'Show only one command description'
+    ];
 
     private function testCommand(string $name, bool $is_required, int $number, float $price = 4.18, string $color = 'RED')
     {
         $this->echo->msg(['Hello, ', $name, 'you chose color', $color]);
+        $this->echo->msg('');
+        $this->echo->info('is_required=' . $is_required);
+        $this->echo->info('number=' . $number);
+        $this->echo->info('price=' . $price);
+        $this->echo->msg('');
         $this->echo->error('ERRORS in program are RED');
         $this->echo->warn('Yellow message show some worning');
         $this->echo->success('Green messages means success operations');
         $this->echo->info('Cyan message require input some information.');
     }
 
-    private function test2Command($name)
+    private function test2Command($name = 'Ralf')
     {
         $this->echo->msg(['Hello, ', $name, 'you chose color', $name]);
         $this->echo->error('ERRORS in program are RED');
@@ -74,25 +82,15 @@ class Cli
      *
      */
 
-    /**
-     * Deploy constructor.
-     */
-    const CMD_DESCTIPTION = [
-        'help' => 'current help message',
-//        'your_command' => 'Your command description'
-    ];
-
     const MESSAGE_NO_DESC = '[Description not exists]';
-
     const MESSAGE_ARR_HELLO = [
         '',
         'Hello! This is cli php script for do some operations',
         'USAGE: $cli.php command [--param1] [--param2] [paramX] [-p]',
         'Please use follow commands:',
-        ''
     ];
-
     const SEPARATOR = '  -  ';
+    const SPACER = '   ';
 
     public function __construct()
     {
@@ -108,10 +106,15 @@ class Cli
         }
     }
 
-
     private function helpCommand()
     {
         $help_message = array_merge(self::MESSAGE_ARR_HELLO, $this->getCommandsList());
+        $this->echo->msg($help_message);
+    }
+
+    private function manCommand($cmd)
+    {
+        $help_message = $this->getCommandsList($cmd);
         $this->echo->msg($help_message);
     }
 
@@ -127,10 +130,10 @@ class Cli
 
         foreach ($params['params'] as $parameter) {
 
-            if($parameter['required']) {
-                if(!isset($options[$parameter['name']])) {
+            if ($parameter['required']) {
+                if (!isset($options[$parameter['name']])) {
 
-                    $is_type = $parameter['type'] !== null ? ' (' . $parameter['type'] .')' : '';
+                    $is_type = $parameter['type'] !== null ? ' (' . $parameter['type'] . ')' : '';
 
                     $this->echo->error('Function `' . $command_name . '` require parameter `' . $parameter['name'] . $is_type . '`, but not set');
                     $this->echo->info('Please add');
@@ -155,24 +158,24 @@ class Cli
 
         for ($index = 2; $index < count($argv); $index++) {
 
-            if(!$parameter) {
+            if (!$parameter) {
 
-                if($argv[$index][0] != '-') {
+                if ($argv[$index][0] != '-') {
 
                     $this->echo->error('You set unsupported parameter ' . $argv[$index]);
                     $this->helpCommand();
                     die();
 
                 } else {
-                    $parameter = str_replace('-','', $argv[$index]);
+                    $parameter = str_replace('-', '', $argv[$index]);
                 }
 
             } else {
 
-                if($argv[$index][0] == '-') {
+                if ($argv[$index][0] == '-') {
 
                     $parameters[$parameter] = false;
-                    $parameter = str_replace('-','', $argv[$index]);
+                    $parameter = str_replace('-', '', $argv[$index]);
 
                 } else {
 
@@ -200,8 +203,7 @@ class Cli
                 $obj['action'] = $method->name;
                 $obj['params'] = array_map(
 
-                    function ($value)
-                    {
+                    function ($value) {
 
                         return [
                             'name' => $value->name,
@@ -227,7 +229,6 @@ class Cli
     private function execute($command_name)
     {
         if (method_exists($this, $command_name)) {
-//            $this->$command_name();
             call_user_func_array([$this, $command_name], $this->getCommandValues($command_name));
         }
     }
@@ -240,11 +241,8 @@ class Cli
         $params = $this->getCommandParams($command_name);
 
         foreach ($params['params'] as $parameter) {
-
-            if ($parameter['required']) {
-                if (isset($options[$parameter['name']])) {
-                    $values[] = $options[$parameter['name']];
-                }
+            if (isset($options[$parameter['name']])) {
+                $values[] = $options[$parameter['name']];
             }
         }
 
@@ -257,7 +255,7 @@ class Cli
         return $command_match;
     }
 
-    private function getCommandsList()
+    private function getCommandsList($only_command = null)
     {
         $methods_list = [];
 
@@ -269,11 +267,13 @@ class Cli
 
                 $command_name = $command_match[1];
 
+                if ($only_command && $command_name != $only_command)
+                    continue;
+
                 $methods_list[] = implode('',
                     [
-                        $command_match[1],
-                        self::SEPARATOR,
-                        $this->getCommandDescription($command_name),
+                        MyEcho::COLOR_BEGIN_YELLOW . $command_name . MyEcho::COLOR_END . ':' . PHP_EOL,
+                        self::SPACER . $this->getCommandDescription($command_name),
                         $this->getCommandParamsHelp($command_name)
                     ]
                 );
@@ -287,15 +287,14 @@ class Cli
     {
         $text = '';
 
-        $params = $this->getCommandParams($command_name);
+        $params = $this->getCommandParams($command_name . 'Command');
 
-//        var_dump($command_name);
-//        var_dump($params);
-
-        if(isset($params['params']) && is_array($params['params'])) {
+        if (isset($params['params']) && is_array($params['params'])) {
 
             foreach ($params['params'] as $param) {
-                $text .= '--' . $param['name'] . '(' .$param['type']. ') ';
+                $text .= PHP_EOL . self::SPACER . '--' . $param['name'];
+                $text .= $param['type'] ? ' (' . $param['type'] . ')' : '';
+                $text .= $param['default'] ? ' <' . $param['default'] . '>' : '';
             }
         }
 
@@ -353,16 +352,14 @@ class MyEcho
     const COLOR_YELLOW = 'yellow';
     const COLOR_WHITE = 'white';
     const COLOR_CYAN = 'cyan';
-    const START_CHAR = '   ';
+    const START_CHAR = '';
     const END_CHAR = "\n";
 
-    private $color_begin = [
-        self::COLOR_RED => "\033[1;31m",
-        self::COLOR_GREEN => "\033[1;32m",
-        self::COLOR_YELLOW => "\033[1;33m",
-        self::COLOR_WHITE => "\033[1;37m",
-        self::COLOR_CYAN => "\033[1;36m",
-    ];
+    const COLOR_BEGIN_RED = "\033[0;31m";
+    const COLOR_BEGIN_GREEN = "\033[0;32m";
+    const COLOR_BEGIN_YELLOW = "\033[0;33m";
+    const COLOR_BEGIN_WHITE = "\033[0;38m";
+    const COLOR_BEGIN_CYAN = "\033[0;36m";
 
     const COLOR_END = "\033[0m";
 
@@ -410,17 +407,53 @@ class MyEcho
             return true;
         }
 
-        print $this->color_begin[$color];
+        print $this->getColorBegin($color);
         print(self::START_CHAR);
         print($message);
         print self::COLOR_END;
         print(self::END_CHAR);
     }
 
+    private function getColorBegin($color)
+    {
+        return constant('self::COLOR_BEGIN_' . strtoupper($color));
+    }
+
     public function __destruct()
     {
         print(self::END_CHAR);
         // TODO: Implement __destruct() method.
+    }
+}
+
+class Shh_clien
+{
+    private $host;
+    private $session;
+
+    public function __construct($host)
+    {
+        $this->host = $host;
+    }
+
+    private function connect()
+    {
+
+    }
+
+    private function disconnect()
+    {
+
+    }
+
+    private function cd($folder)
+    {
+
+    }
+
+    private function pull()
+    {
+
     }
 }
 
