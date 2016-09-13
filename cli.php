@@ -20,6 +20,9 @@ class Cli
         'man' => 'Show only one command description'
     ];
 
+    /**
+     * Testing current utility
+     */
     private function testCommand(string $name, bool $is_required, int $number, float $price = 4.18, string $color = 'RED')
     {
         $this->echo->msg(['Hello, ', $name, 'you chose color', $color]);
@@ -34,6 +37,12 @@ class Cli
         $this->echo->info('Cyan message require input some information.');
     }
 
+    /**
+     * Test 2 some comment
+     * multiple
+     * lines
+     * @param string $name
+     */
     private function test2Command($name = 'Ralf')
     {
         $this->echo->msg(['Hello, ', $name, 'you chose color', $name]);
@@ -86,11 +95,12 @@ class Cli
     const MESSAGE_ARR_HELLO = [
         '',
         'Hello! This is cli php script for do some operations',
-        'USAGE: $cli.php command [--param1] [--param2] [paramX] [-p]',
+        'USAGE: $cli.php command [--param1] [--param2] [param2Value]',
         'Please use follow commands:',
     ];
     const SEPARATOR = '  -  ';
     const SPACER = '   ';
+    const FUNC_SUFFIX = 'Command';
 
     public function __construct()
     {
@@ -135,7 +145,7 @@ class Cli
 
                     $is_type = $parameter['type'] !== null ? ' (' . $parameter['type'] . ')' : '';
 
-                    $this->echo->error('Function `' . $command_name . '` require parameter `' . $parameter['name'] . $is_type . '`, but not set');
+                    $this->echo->error('Function `' . $this->shortName($command_name) . '` require parameter `' . $parameter['name'] . $is_type . '`, but not set');
                     $this->echo->info('Please add');
                     $this->echo->msg('--' . $parameter['name'] . ' "some value if need"');
                     $this->echo->info('to your command for call this function');
@@ -146,6 +156,11 @@ class Cli
         }
 
         return true;
+    }
+
+    private function shortName($name)
+    {
+        return str_replace(self::FUNC_SUFFIX, '', $name);
     }
 
     private function getOptions()
@@ -201,6 +216,7 @@ class Cli
 
                 $obj = [];
                 $obj['action'] = $method->name;
+                $obj['description'] = $method->getDocComment();
                 $obj['params'] = array_map(
 
                     function ($value) {
@@ -209,7 +225,7 @@ class Cli
                             'name' => $value->name,
                             'required' => !$value->isDefaultValueAvailable(),
                             'default' => $value->isDefaultValueAvailable() ? $value->getDefaultValue() : null,
-                            'type' => $value->hasType() ? $value->getType()->__toString() : null
+                            'type' => $value->hasType() ? $value->getType()->__toString() : null,
                         ];
                     },
                     $method->getParameters()
@@ -241,17 +257,55 @@ class Cli
         $params = $this->getCommandParams($command_name);
 
         foreach ($params['params'] as $parameter) {
+
             if (isset($options[$parameter['name']])) {
-                $values[] = $options[$parameter['name']];
+
+                $type = $parameter['type'];
+                $value = $options[$parameter['name']];
+
+                $values[] = $this->validateValue($type, $value);
             }
+
         }
 
         return $values;
     }
 
+    private function validateValue($type, $value)
+    {
+        switch (strtolower($type)) {
+            case 'bool':
+
+                if(is_bool($value) || is_int($value))
+                    return (bool)$value;
+
+                if(preg_match("/true/is",$value) || (int)$value > 0)
+                    return true;
+                else
+                    return false;
+
+                break;
+
+            case 'float':
+                return (float)$value;
+                break;
+
+            case 'int':
+                return (int)$value;
+                break;
+
+            case 'string':
+                return trim($value);
+                break;
+
+            default:
+                return $value;
+        }
+    }
+
     private function is_command($command)
     {
-        preg_match("/([a-z0-9A-Z_]+)Command$/", $command, $command_match);
+        preg_match("/([a-z0-9A-Z_]+)" . self::FUNC_SUFFIX . "$/", $command, $command_match);
         return $command_match;
     }
 
@@ -287,7 +341,7 @@ class Cli
     {
         $text = '';
 
-        $params = $this->getCommandParams($command_name . 'Command');
+        $params = $this->getCommandParams($command_name . self::FUNC_SUFFIX);
 
         if (isset($params['params']) && is_array($params['params'])) {
 
@@ -308,8 +362,31 @@ class Cli
         if (isset($descriptions[$command])) {
             return $descriptions[$command];
         } else {
-            return self::MESSAGE_NO_DESC;
+            return $this->getCodeCommentOrDefault($command);
         }
+    }
+
+    private function getCodeCommentOrDefault($command)
+    {
+        $codeComment = $this->getCodeComment($command);
+        return $codeComment ? $codeComment : self::MESSAGE_NO_DESC;
+    }
+
+    private function getCodeComment($command)
+    {
+        $params = $this->getCommandParams($command . self::FUNC_SUFFIX);
+        return is_string($params['description']) ? $this->clearCommentDescription($params['description']) : false;
+    }
+
+    private function clearCommentDescription($description)
+    {
+        $description = preg_replace('/\/\/+/is',' ', trim($description));
+        $description = preg_replace('/\s+/is',' ', $description);
+        $description = preg_replace('/\/?[*]+\/?/is',' ', $description);
+        $description = preg_replace('/@.\S+.*/is',' ', $description);
+        $description = preg_replace('/\s{3}/is', PHP_EOL . self::SPACER, $description);
+
+        return trim($description);
     }
 
     private function getCommandMethod()
@@ -318,10 +395,10 @@ class Cli
         global $argv;
 
         if (isset($argv) && isset($argv[1]) && $argv[1]) {
-            return $argv[1] . 'Command';
+            return $argv[1] . self::FUNC_SUFFIX;
         }
 
-        return 'helpCommand';
+        return 'help' . self::FUNC_SUFFIX;
     }
 }
 
