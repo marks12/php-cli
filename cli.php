@@ -10,6 +10,25 @@
 namespace Cli;
 
 
+/**
+ * Ру: - это не пи уай, это "ЭР" и "У". Можете проверить. Означает русский по-русски русскими буквами.
+ *
+ * Привет мир. Этот скрипт являет собой набор базовых функций для простого создания CLI приложения. Для добавления
+ * своих операций необходимо создать метод внутри сласса CLI (как в примере) прописать код нужных операций,
+ * добавить при необходимости входные параметры с указанием их типов и не забыть про комменты перед функцией чтобы
+ * хелпу было что показывать. Если ваши параметры не обязательные, устанавливайте значения по умолчанию. Если обязательные
+ * не ставьте значения по умолчанию. В дебрях кода есть SSH клиент, ECHO класс для вывода в консоль, Запрос данных
+ * у оператора в интерактивном режиме (PROMPT).
+ *
+ * EN:
+ * This is CLI basic class for make any operation and write results to console. Just add new private function with typed
+ * parameters and write some description.
+ * Basic class contain SSH client, Colored ECHO object with function msg, error, info, warning and some other
+ * useful operations.
+ *
+ * Class Cli
+ * @package Cli
+ */
 class Cli
 {
     private $echo;
