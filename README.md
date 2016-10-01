@@ -1,5 +1,5 @@
 # php-cli
-Pho cli application skeleton
+Php cli application skeleton
 
 ## About
 
@@ -113,3 +113,4 @@ man:
  
  Finish
  ```
+ 
