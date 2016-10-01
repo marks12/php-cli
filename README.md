@@ -63,7 +63,7 @@ private function checkSshCommand(string $server)
 
 ```PHP
 /**
-* Your function`s very clear description
+* Your functions very clear description
 */
 private function checkSshCommand(string $server) 
 {
