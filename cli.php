@@ -1,6 +1,11 @@
 #!/usr/bin/php
 <?php
+
+
 /**
+ * @author tsv@serveon.ru
+ * @version v1.0
+ *
  * Created by PhpStorm.
  * User: tsv
  * Date: 08.09.16
