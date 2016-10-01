@@ -44,7 +44,7 @@ class Cli
     ];
 
     /**
-     * get check ssh client
+     * check ssh client
      */
     private function checkSshCommand(string $server)
     {
