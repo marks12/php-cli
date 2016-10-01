@@ -9,7 +9,6 @@
 
 namespace Cli;
 
-
 /**
  * Ру: - это не пи уай, это "ЭР" и "У". Можете проверить. Означает русский по-русски русскими буквами.
  *
@@ -38,6 +37,28 @@ class Cli
         'help' => 'current help message',
         'man' => 'Show only one command description'
     ];
+
+    /**
+     * get check ssh client
+     */
+    private function checkSshCommand(string $server)
+    {
+        $this->echo->msg("Try connect to server $server");
+
+        $ssh = new Ssh_clien($server);
+        $this->echo->msg(
+
+            $ssh->exec([
+                "su admin\r",
+                "cd /home/admin/web",
+                "dir",
+                "pwd",
+                "exit"
+            ])
+        );
+
+        $this->echo->msg('Finish');
+    }
 
     /**
      * Testing current utility
@@ -522,34 +543,94 @@ class MyEcho
     }
 }
 
-class Shh_clien
+
+class Ssh_clien
 {
-    private $host;
-    private $session;
+    // SSH Host
+    private $ssh_host = 'myserver.example.com';
+    // SSH Port
+    private $ssh_port = 22;
+    // SSH Server Fingerprint
+    private $ssh_server_fp = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+    // SSH Username
+    private $ssh_auth_user = 'root';
+    // SSH Public Key File
+    private $ssh_auth_pub = '/home/REPLACE_USERNAME/.ssh/id_rsa.pub';
+    // SSH Private Key File
+    private $ssh_auth_priv = '/home/REPLACE_USERNAME/.ssh/id_rsa';
+    // SSH Private Key Passphrase (null == no passphrase)
+    private $ssh_auth_pass;
+    // SSH Connection
+    private $connection;
+
+    private $shell;
 
     public function __construct($host)
     {
-        $this->host = $host;
+        $this->ssh_host = $host;
+        $this->ssh_auth_pub = str_replace('REPLACE_USERNAME', get_current_user(), $this->ssh_auth_pub);
+        $this->ssh_auth_priv = str_replace('REPLACE_USERNAME', get_current_user(), $this->ssh_auth_priv);
+
+        $this->connect();
     }
 
-    private function connect()
+    private function connect() {
+        if (!($this->connection = ssh2_connect($this->ssh_host, $this->ssh_port))) {
+            throw new \Exception('Cannot connect to server');
+        }
+//        $fingerprint = ssh2_fingerprint($this->connection, SSH2_FINGERPRINT_MD5 | SSH2_FINGERPRINT_HEX);
+//        if (strcmp($this->ssh_server_fp, $fingerprint) !== 0) {
+//            throw new \Exception('Unable to verify server identity!');
+//        }
+        if (!ssh2_auth_pubkey_file($this->connection, $this->ssh_auth_user, $this->ssh_auth_pub, $this->ssh_auth_priv, $this->ssh_auth_pass)) {
+            throw new \Exception('Autentication rejected by server');
+        }
+    }
+
+    public function shell($cmd)
     {
+        if (!$this->shell) {
+            $this->shell = ssh2_shell($this->connection, 'xterm');
+        }
+
+        fwrite( $this->shell, $cmd);
+    }
+
+    public function exec($cmd_list) {
+
+        $data = "";
+
+        if(is_array($cmd_list)) {
+
+            $cmd = implode("; ", $cmd_list) . "\n";
+
+        } else {
+            $cmd = $cmd_list . "\n";
+        }
+
+        if (!($stream = ssh2_exec($this->connection, $cmd . PHP_EOL . chr(10)))) {
+            throw new \Exception('SSH command failed');
+        }
+
+        stream_set_blocking($stream, true);
+        while ($buf = fread($stream, 4096)) {
+            $data .= $buf;
+        }
+        fclose($stream);
+
+        return $data;
+    }
+
+    public function disconnect() {
+
+        $this->exec('echo "EXITING" && exit;');
+        $this->connection = null;
+        unset($this->connection);
 
     }
 
-    private function disconnect()
-    {
-
-    }
-
-    private function cd($folder)
-    {
-
-    }
-
-    private function pull()
-    {
-
+    public function __destruct() {
+        $this->disconnect();
     }
 }
 
