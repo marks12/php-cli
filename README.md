@@ -8,8 +8,8 @@ like ssh client or preconfigured comfortable (for me) echo class.
 
 ## Using
 
-If you need do some operations you need just create sume user function in `Cli` class.
-For example if you want make some simple operation in destination server, you may create 
+If you need do some operations you need just create some user function in `Cli` class.
+For example if you want make operations in destination server, you may create 
 one function like this:
 
 ```PHP
