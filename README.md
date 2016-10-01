@@ -38,19 +38,19 @@ one function like this:
 
 ```
 
-##### This simple function `heckSsh`
+##### This simple function `checkSsh` do:
 
 1. connect to destination server as `root`;
 1. login as admin user;
 1. change directory to `/home/admin/web`
-1. show current derictopy;
+1. show current derictory;
 1. logout from admin user to `root`
 
 ## Create functions
 
 1. For creating some special function you need create some method 
-named like `yourMegaMthodCommand` with `Command` word in the name.
-1. If you want send paramenters to your method just set var with 
+named like `yourMegaMethodCommand` with `Command` word in the end of name.
+1. If you want send parameters to your method just set var with 
 type and default parameter (if need) like this.
 
 ```PHP
@@ -59,11 +59,11 @@ private function checkSshCommand(string $server)
     //... METHOD BODY
 }
 ```
-1. Dont forget add some description for your mehtod like this
+1. Dont forget add some description for your method.
 
 ```PHP
 /**
-* Your function very clear description
+* Your function`s very clear description
 */
 private function checkSshCommand(string $server) 
 {
