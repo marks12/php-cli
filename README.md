@@ -1,6 +1,11 @@
 # php-cli
 Php cli application skeleton
 
+## Requirements
+
+1. PHP 7.x
+1. libssh2 library
+
 ## About
 
 This cli php script help you do some operations. It contains some base classes 
@@ -72,7 +77,7 @@ private function checkSshCommand(string $server)
 ```
 ## Run commands
 
-For running self command in cli.php you can vew functions help like this:
+For running command in cli.php you can view functions help like this:
 
 ```BASH
 $ ./cli.php
@@ -102,7 +107,7 @@ man:
    --cmd
 ```
  
- or just run you method
+ or just run method
  
  ```BASH
  $ ./cli.php checkSsh --server servername.com
